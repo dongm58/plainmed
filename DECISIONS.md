@@ -229,3 +229,14 @@ The same variant is used for both the zero-shot and the 3-shot system. The sensi
 3. *Why SARI to choose, if SARI is weak?* It's the only reference-based metric available before the checker exists, and the FKGL and format filters stop it from picking a prompt that just copies the source. The checker results are reported for all variants afterward as a check.
 4. *Why greedy decoding?* It makes results reproducible and removes sampling luck from the comparison. The cost is somewhat blander, sometimes repetitive text.
 5. *Could the few-shot examples leak test information?* No: they come only from train, are chosen by a fixed seed, and are checked against config on every run.
+
+### 2026-11-14: Step 4 smoke test on Colab T4 (Qwen2.5-3B-Instruct, float16, prompt A, 2 validation examples)
+
+- **float16 works:** the outputs are fluent English, nothing is truncated (largest output 265 of 400 tokens), and the model downloaded and loaded in about a minute.
+- **Speed:** 7.9 s per example zero-shot and 6.1 s per example 3-shot, in batches of only 2. Prompts are about 520–760 tokens zero-shot and about 2,200–2,400 tokens 3-shot. At these speeds, unbatched, the full Step 4 would take about 2.4 hours; batches of 8 should cut that a lot. **Decision: keep the 3B model.**
+- **Early qualitative signs:** these are only 2 examples, so they're not results, but they're the kinds of errors the checker and the hand labels need to catch.
+  - **Zero-shot turned a benefit into a harm** (`cochrane-val-0000`). The source says sustained virologic response was 17% with interferon vs 3% without; the output says "About 17 out of every 100 people who took interferon **got very sick**, compared to only about 3 out of 100." That reverses the meaning of the main result. This is a strong candidate for the demo's failure case and for error type (1) or (2).
+  - Zero-shot also wrote **3 paragraphs** for that example, breaking the one-paragraph format. The selection rule's format filter exists for this.
+  - **Zero-shot added unsupported conclusions:** "This means their bodies were working better" (`cochrane-val-0001`) and "interferon helps people with hepatitis C feel better."
+  - **3-shot got the interferon result right** ("had their virus completely gone") but **kept the raw statistics** ("Peto odds ratio 4.60, 95% CI 1.53 to 13.85"), which is less plain. It also **added "More trials are needed…"**, which the abstract doesn't say. That's the risk noted above: few-shot human summaries sometimes add standard phrasing that isn't in the source.
+  - Both settings stated one single-study result ("fewer times when their blood pressure dropped") as a general finding. That's error type (2), increased certainty.
