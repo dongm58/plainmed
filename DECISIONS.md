@@ -147,6 +147,8 @@ Faithfulness to the source isn't measured by any of these. That's the checker's 
 - **Bootstrap:** 1,000 resamples of examples, percentile 95% CI, seed 42. The paired bootstrap resamples the *same* examples for both systems, which is the right test when two systems are compared on one test set.
 - **`results/summary.csv` replaces a row instead of appending a duplicate** when a system is re-scored, so re-running a step can't leave two different numbers for the same system.
 
+**End-to-end check (fresh clone, Python 3.11):** scoring copy-the-source and the reference on Cochrane val took about 10 seconds per system, and the readability numbers match `results/data_stats.csv` exactly (FKGL 14.28 vs 12.85, digits 20.84 vs 5.15), so Step 1 and Step 2 agree. **Copying the source scores SARI 41.5 (95% CI 41.1–41.9).** That is the bar every real system has to clear, and it shows how much SARI gives for simply keeping the source's words when the references are close to the source. Worth saying in the report.
+
 **Not tested yet:** real BERTScore, because it needs to download roberta-large, which is blocked here. The first Colab notebook will run it on a few examples as a check.
 
 **Defend it**
