@@ -119,7 +119,7 @@ def cmd_sensitivity(args, config) -> None:
     for variant in VARIANTS:
         for setting, n_shots in SHOT_SETTINGS.items():
             path = out_root / "outputs" / "prompt_sensitivity" / f"{variant}_{setting}.jsonl"
-            run_system(examples, f"llm_{setting}", variant, get_shots(config, n_shots), generator, path, args.batch_size)
+            run_system(examples, f"llm_{setting}", variant, get_shots(config, n_shots), generator, path, args.batch_size, log_every=10)
             rows.append({"variant": variant, "shots": setting, "n": len(examples), "model": generator.name,
                          **score_rows(read_jsonl(path), examples)})
     reference_fkgl = statistics.mean(readability(e["target"])["fkgl"] for e in examples)
@@ -184,7 +184,7 @@ def cmd_run(args, config) -> None:
         print("Note: test split. CONTRACT.md rule 1 says test is only run in Step 9.")
     generator = load_generator(args, config)
     path = Path(args.out_root) / "outputs" / f"llm_{setting}" / f"{args.dataset}_{args.split}.jsonl"
-    run_system(examples, f"llm_{setting}", variant, get_shots(config, SHOT_SETTINGS[setting]), generator, path, args.batch_size)
+    run_system(examples, f"llm_{setting}", variant, get_shots(config, SHOT_SETTINGS[setting]), generator, path, args.batch_size, log_every=10)
     print(f"wrote {path}")
 
 
