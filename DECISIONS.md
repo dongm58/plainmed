@@ -97,11 +97,12 @@ Checked both steps against their prompts and rebuilt everything from a fresh clo
 
 **Problems found and fixed**
 1. **textstat 0.7.3 crashed on a fresh install.** It imports `pkg_resources`, which setuptools removed in version 82. My workspace hid this because it had an old setuptools. Fix: `setuptools==81.0.0` pinned in both requirements files. Verified: it fails with 82.0.1 and 83.0.0 and works with 81.0.0.
-2. **The Step 1 prompt said to use spaCy if it installs, and I hadn't tried.** It does install (spaCy 3.8.18 + en_core_web_sm 3.8.0). Both splitters pass the 10-real-sentence test, so I compared them on 100 seeded validation abstracts. They gave identical splits on 87 of them. On the 13 disagreements:
+2. **The Step 1 prompt said to use spaCy if it installs, and I hadn't tried.** It does install (spaCy 3.8.18 + en_core_web_sm 3.8.0). Both splitters pass the 10-real-sentence test, so I compared them on 100 seeded validation abstracts. Before any fixes they gave identical splits on 86 of them. On the 14 disagreements:
    - The rule-based splitter was right on 10. spaCy split mid-sentence after units ("156/101 mm" | "Hg."), inside lists of abbreviations, before a parenthesized CI, and in plain sentences ("quality of life and" | "immunological function.").
    - spaCy was right on 2: a missing space in the source ("each study.The Nerve…") and a source typo ("(RR 0.62. 95% CI…)").
-   - One was a rule-based bug that this comparison exposed and I fixed: a unit ending in a single letter ("3.5 g/d. No trials…") was treated like an initial, so the sentences weren't split.
-   - The comparison also exposed a second bug: a numbered list ("1. Chlorpromazine versus…") was split into a lone "1." sentence.
+   - Two were rule-based bugs that this comparison exposed and I fixed. One: a unit ending in a single letter ("3.5 g/d. No trials…") was treated like an initial, so the sentences weren't split.
+   - Two: a numbered list ("1. Chlorpromazine versus…") was split into a lone "1." sentence.
+   After the two fixes, the splitters agree on 88 of 100, and the remaining 12 split 10 to 2 in favor of the rule-based splitter.
    **Decision: keep the rule-based splitter.** It's more accurate on this data, it's deterministic, and it needs no model download for the demo. Both fixes have tests.
 3. **Unmeasured claim removed.** The first version of the Step 1 entry gave a percentage of NIHR abstracts over 1,024 tokens that had never been measured. It now says Step 5 will measure it.
 
@@ -115,6 +116,6 @@ Checked both steps against their prompts and rebuilt everything from a fresh clo
 - Step 1 said to reuse `scripts/precheck/`; that logic now lives in `plainmed/data.py` instead (so Step 6 can import it), and the results match the pre-check output exactly. The precheck scripts stay in the repo as the record of what was checked before building.
 
 **Defend it**
-1. *Why trust a hand-written splitter over spaCy?* Because I measured it: on 100 real abstracts it was right in 10 of the 13 disagreements, and spaCy's errors (splitting "mm | Hg.") would create fake "unsupported sentences" for the checker.
+1. *Why trust a hand-written splitter over spaCy?* Because I measured it: on 100 real abstracts it was right in 10 of the 12 disagreements left after fixing two bugs, and spaCy's errors (splitting "mm | Hg.") would create fake "unsupported sentences" for the checker.
 2. *What would a fresh-install bug have cost?* The demo or a grader's reproduction would crash on the first readability score. Testing from a clean clone on the same Python as the laptop is what caught it.
 3. *Is the regex splitter perfect?* No: it can't split when the source is missing a space after a period, and it splits on typos like "(RR 0.62. 95% CI". Both are rare (2 of 100 abstracts).
