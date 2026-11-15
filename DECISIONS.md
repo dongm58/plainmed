@@ -157,3 +157,31 @@ Faithfulness to the source isn't measured by any of these. That's the checker's 
 3. *If SARI rewards matching a weak reference, why report it?* It's the field's standard, so readers expect it. But the conclusions weight readability and faithfulness more, as the proposal's risk table said they would.
 4. *What does a confidence interval mean here?* If we drew new test sets of the same size from the same population, about 95% of intervals built this way would contain the true mean score. It shows how much a number could move just from which examples happened to be in the test set.
 5. *Why a paired bootstrap for comparing systems?* Some abstracts are harder than others for every system. Pairing compares systems on the same abstracts, which removes that shared difficulty and gives a fairer and tighter comparison.
+
+## 2026-11-14: Step 3, baselines
+
+**What was built:** `plainmed/baselines.py` (`copy_source`, `extractive`), `scripts/03_baselines.py`, and `tests/test_baselines.py` (5 tests). All 32 tests pass. It ran on Cochrane val only; test and NIHR wait for Step 9.
+
+**Outputs:** `outputs/{copy_source,extractive,reference}/cochrane_val.jsonl`, per-example scores in `results/scores/`, rows in `results/summary.csv`, and `results/extractive_examples_cochrane_val.md` (3 seeded examples, each source next to its outputs). System outputs are committed to git: they're small, and the demo's cached mode and the report tables must use exactly these files.
+
+**Validation results (n = 411, 95% bootstrap CIs)**
+
+| System | FKGL | Words | Digits/100 | SARI | ROUGE-L |
+|---|---|---|---|---|---|
+| copy_source | 14.3 (14.1–14.5) | 347 | 20.8 | 41.5 (41.0–41.9) | 25.2 (24.3–26.3) |
+| extractive | 11.0 (10.8–11.3) | 39 | 0.3 | 34.2 (33.7–34.6) | 14.9 (14.2–15.7) |
+| reference (human) | 12.9 (12.6–13.1) | 204 | 5.2 | n/a | n/a |
+
+**What these show**
+- The numbers behave as expected: copy_source has exactly the source's readability, and extractive is much shorter, with almost no digits.
+- **Extractive "beats" the human summaries on FKGL (11.0 vs 12.9) while being clearly worse.** Picking the fewest-digit sentences with ties broken by length favors short sentences, so the output is only 39 words, about a fifth of the human summary. This is a concrete example of why FKGL can't be the only readability measure: it rewards short sentences, not clear content. Length and faithfulness have to be read alongside it.
+- **Extractive scores lower SARI than copying the source (34.2 vs 41.5).** Deleting most of the source loses many n-grams the reference kept. So a neural system's SARI should be compared with *both* baselines.
+- **The examples show the extractive baseline's typical failure: it drops the main finding.** In `cochrane-val-0012`, the key result (text-message reminders improved appointment attendance, RR 1.14) has numbers in it, so it's dropped, and the output keeps "Four of these studies were newly identified during this update" instead. That's an omission error (category 3 in the proposal) and a good failure example for the report.
+- Ties are broken by fewest words, as the proposal specified. Reversing it (prefer longer sentences) would give longer output that's more comparable to the reference, but that would be a design change made after seeing results, so it's left alone. It could appear as a variant in the analysis.
+
+**Defend it**
+1. *Why have a baseline that obviously loses?* Copy-source sets the floor for readability and shows how much SARI and ROUGE reward doing nothing (41.5 SARI). Without it, a model's SARI of 42 would look like progress.
+2. *What is the extractive baseline testing?* Whether "just drop the statistic-heavy sentences" is enough. It isn't: it loses the main findings and is far too short.
+3. *Why does extractive have a better grade level than the human summary?* FKGL rewards short sentences and short words, and the baseline picks exactly those. Grade level measures the surface of the text, not whether it says the right things.
+4. *Why not tune k or the tie-break to look better?* The design was fixed in the proposal. Changing it after seeing validation results would be fitting the baseline to the metric.
+5. *Why commit outputs to git?* So the tables, the demo and anyone reproducing the work use the exact same outputs.
