@@ -104,7 +104,8 @@ plainmed/
 
 ## 7. Definition of done (every step)
 
-1. Its tests pass.
+1. Its tests pass, both in the working copy and in a fresh clone of the GitHub repo installed from `requirements.txt` on Python 3.11 (the laptop's version).
 2. It writes exactly the files the prompt lists, in the formats above.
 3. DECISIONS.md has a dated entry with what was chosen, the alternatives, and why.
+5. Every line of its prompt has been checked off; anything skipped or done differently is listed in DECISIONS.md with the reason.
 4. There is a short "defend it" note (5 likely oral-defense questions with answers) at the bottom of that DECISIONS.md entry.
