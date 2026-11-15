@@ -5,8 +5,6 @@ COSC 72/272 (Dartmouth, Fall 2026) final project · Michael Dong
 PlainMed rewrites the results sections of Cochrane systematic-review abstracts into plain English with a prompted open LLM (Qwen2.5-3B-Instruct), then runs a **faithfulness checker** on every sentence of the rewrite: an NLI model (DeBERTa-v3) scores how well the source supports the sentence, and a rule flags numbers that are not in the source. Flagged sentences are shown to the reader as "check this."
 
 - **Live demo:** https://dongm58.github.io/plainmed-demo/
-- **Design decisions and every change from the proposal:** [`DECISIONS.md`](DECISIONS.md)
-- **Project rules (formats, names, evaluation rules):** [`CONTRACT.md`](CONTRACT.md)
 
 **Reading aid only, not medical advice.**
 
@@ -29,7 +27,7 @@ The raw data is not copied into this repo. `python scripts/01_data.py` downloads
 | Qwen2.5-3B, 3-shot | 8.3 | 156 | 37.4 | 18.0 | 33% |
 | Human plain-language summary | 12.5 | 215 | — | — | 50% |
 
-Hand-labeled validation of the checker is in progress (see `DECISIONS.md`).
+Hand-labeled validation of the checker is in progress.
 
 ## How to reproduce
 
