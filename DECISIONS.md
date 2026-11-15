@@ -11,6 +11,7 @@ Every choice, and every change from the proposal, with the reason. Newest entrie
 | 100 hand-labeled sentences, one set for both tuning and reporting | 120 sentences: 60 from val to tune the threshold, 60 from test to report precision and recall | Reviewer feedback: keep tuning and reporting labels separate, otherwise precision and recall are inflated |
 | FKGL 15.5 (source) vs 14.2 (target), hand-written syllable counter | FKGL computed with numbers masked: 14.2 vs 12.8 | textstat treats every decimal point as a sentence end, which makes number-heavy abstracts look easy (10.3 raw). See 2026-11-14 entry |
 | NIHR test set: 1,287 pairs | 1,036 pairs after removing exact duplicates | 251 NIHR pairs appear twice in CELLS (same abstract and same summary) |
+| Fine-tune BART twice, on Cochrane alone and on Cochrane + deduplicated CELLS, to test whether extra general-science data helps | Dropped: only Cochrane-trained BART-base | My call on 2026-11-14 to protect GPU time and the hand-labeling schedule for the core systems and the checker, which carry the project's contribution. It was a secondary question, and the proposal's reduced-scope plan already allowed dropping it. The leakage finding stays in the report: CELLS contains 229 of the 480 Cochrane test sources and 185 of the 411 val sources (by 8-gram overlap), and exact matching finds none of them. That is a useful warning for anyone combining these datasets |
 | 227 of 480 Cochrane test examples appear in CELLS train | 229, found by 8-gram overlap, since an exact match finds 0 | Devaraj's sources are only the results section, while CELLS stores the full abstract, so exact matching misses every overlap |
 
 ## 2026-11-14: Pre-build data checks
@@ -240,3 +241,12 @@ The same variant is used for both the zero-shot and the 3-shot system. The sensi
   - **Zero-shot added unsupported conclusions:** "This means their bodies were working better" (`cochrane-val-0001`) and "interferon helps people with hepatitis C feel better."
   - **3-shot got the interferon result right** ("had their virus completely gone") but **kept the raw statistics** ("Peto odds ratio 4.60, 95% CI 1.53 to 13.85"), which is less plain. It also **added "More trials are needed…"**, which the abstract doesn't say. That's the risk noted above: few-shot human summaries sometimes add standard phrasing that isn't in the source.
   - Both settings stated one single-study result ("fewer times when their blood pressure dropped") as a general finding. That's error type (2), increased certainty.
+
+## 2026-11-14: Step 6 skipped
+
+I decided to skip the optional Cochrane + CELLS experiment. `bart_cells` was removed from the system list in config.yaml and CONTRACT.md. The reasons are in the "Proposal to final" table. The CELLS overlap analysis (Step 1 and the pre-check) is still reported as a data-handling finding.
+
+**Defend it**
+1. *Why drop it?* It answered a side question (does extra non-patient science text help?) and would have cost a second full BART training run, time better spent on the checker and the hand labels, which are the project's main contribution.
+2. *What would you have had to do to run it safely?* Remove every CELLS pair that overlaps Cochrane val or test by n-gram overlap (229 test and 185 val sources would have leaked with exact matching), remove internal duplicates and NIHR, then train with identical settings so only the data differs.
+3. *What do you expect it would have shown?* Unknown: more data helps fluency, but 91% of CELLS is written for scientists rather than patients, so it could make outputs less plain. That uncertainty is why it's listed as future work rather than claimed either way.

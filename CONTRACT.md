@@ -82,7 +82,6 @@ plainmed/
 | `llm_zeroshot` | Prompted LLM, zero-shot |
 | `llm_fewshot` | Prompted LLM, 3-shot |
 | `bart_base` | BART-base fine-tuned on Cochrane train |
-| `bart_cells` | Optional: BART-base fine-tuned on Cochrane + deduplicated CELLS |
 | `reference` | The human-written plain-language summary, scored like a system so the reader has a ceiling |
 
 ## 5. Rules that protect the evaluation

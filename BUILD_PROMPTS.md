@@ -130,7 +130,7 @@ Earns: correct training, validation and early stopping (2), justified model choi
 
 ---
 
-## Step 6 (optional, do only if time allows): Cochrane + CELLS
+## Step 6 (optional): Cochrane + CELLS (SKIPPED on 2026-11-14, see DECISIONS.md)
 
 ```
 Follow CONTRACT.md in /home/claude/plainmed exactly. Read DECISIONS.md first.

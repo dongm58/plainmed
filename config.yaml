@@ -25,7 +25,7 @@ datasets:
     expected_sizes: {test: 1036}
     journal_prefix: nhir_
 
-systems: [copy_source, extractive, llm_zeroshot, llm_fewshot, bart_base, bart_cells, reference]
+systems: [copy_source, extractive, llm_zeroshot, llm_fewshot, bart_base, reference]
 
 models:
   bart: facebook/bart-base

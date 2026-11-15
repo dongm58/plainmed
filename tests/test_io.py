@@ -14,7 +14,7 @@ Output: pass/fail results from pytest.
 
 from plainmed.io import append_jsonl, done_ids, load_config, read_jsonl, repo_path, write_jsonl
 
-CONTRACT_SYSTEMS = ["copy_source", "extractive", "llm_zeroshot", "llm_fewshot", "bart_base", "bart_cells", "reference"]
+CONTRACT_SYSTEMS = ["copy_source", "extractive", "llm_zeroshot", "llm_fewshot", "bart_base", "reference"]
 
 
 def test_jsonl_round_trip(tmp_path):
