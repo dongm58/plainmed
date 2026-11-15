@@ -43,3 +43,21 @@ Scripts are in `scripts/precheck/`; the full output is in `results/precheck_2026
 3. *Why deduplicate NIHR?* Duplicates count the same example twice, which narrows the confidence intervals for no real reason and overweights those reviews.
 4. *Why does exact matching find 0 Cochrane–CELLS overlaps?* Devaraj kept only the results section; CELLS kept the whole abstract. The text overlaps, but the strings are never identical.
 5. *Is NIHR still independent of Cochrane?* Yes: zero shared abstracts, and it's a different publisher with different writing guidelines.
+
+## 2026-11-14: Step 0, skeleton and config
+
+**What was built:** the folder layout from CONTRACT.md, `config.yaml`, `plainmed/io.py` (`load_config`, `read_jsonl`, `write_jsonl`, `append_jsonl`, `done_ids`), `pyproject.toml` (so Colab can run `pip install -e .` and tests can import the package), two requirements files, and `tests/test_io.py` (4 tests, all pass).
+
+**Choices**
+- **Two requirements files.** `requirements.txt` pins everything for my laptop (Python 3.11). `requirements-colab.txt` leaves out torch, numpy, scipy, pandas, scikit-learn and matplotlib, because Colab already ships GPU builds of those. Reinstalling them wastes several minutes per session and can break Colab's CUDA setup.
+- **Pinned for Python 3.11.** The newest numpy (2.5) and scipy (1.18) need Python 3.12, so they're pinned to numpy 2.4.6 and scipy 1.17.1. The whole file was resolved with `uv pip compile` for Python 3.11 on both Windows and Linux, with no conflicts. The Colab file resolves for Python 3.12.
+- **textstat pinned to 0.7.3** (see the data-check entry: newer versions need an NLTK download).
+- **Values that must be chosen on validation are written as `TBD_ON_VAL`** in config.yaml: prompt variant, few-shot ids, BART decoding settings and the checker threshold. Step 9 refuses to run on test while any `TBD_ON_VAL` is left, which enforces CONTRACT rule 1 (test is touched once).
+- **Resumable writes.** `append_jsonl` flushes every record and `done_ids` lists what's finished, so a Colab disconnect in the middle of a 480-example run only loses the example in progress.
+
+**Defend it**
+1. *Why JSONL instead of CSV?* Abstracts contain commas, quotes and newlines; JSONL stores one record per line with no escaping problems, and each line can be appended on its own, which makes resuming possible.
+2. *Why put every setting in config.yaml?* So the report, the code and the demo read the same values, and a change can't happen in one place and not another.
+3. *Why not pin torch on Colab?* Colab's torch is built for its GPU drivers; a different pinned version could install a CPU-only build or a mismatched CUDA build.
+4. *What stops you from tuning on the test set by accident?* The `TBD_ON_VAL` placeholders plus the check at the start of Step 9.
+5. *Why Python 3.11?* It's supported by every pinned package, and brand-new Python versions often lack PyTorch wheels.

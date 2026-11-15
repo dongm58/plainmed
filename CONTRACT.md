@@ -21,7 +21,9 @@ plainmed/
   BUILD_PROMPTS.md       the step-by-step prompts
   README.md              how to reproduce everything (written in Step 12)
   config.yaml            all paths, seeds, model names and generation settings
-  requirements.txt
+  pyproject.toml         makes plainmed/ installable (pip install -e .) and configures pytest
+  requirements.txt       pinned versions for the laptop (Python 3.11)
+  requirements-colab.txt the same minus packages Colab already provides (torch, numpy, ...)
   data/
     raw/                 untouched downloads (git-ignored)
     processed/           cleaned JSONL (format in Section 3)
@@ -33,7 +35,8 @@ plainmed/
     llm.py               prompt templates + LLM runner
     bart.py              fine-tuning + generation
     checker.py           NLI + number-mismatch faithfulness checker
-  scripts/               one runnable script per step (01_data.py, 02_metrics_check.py, ...)
+  scripts/               one runnable script per step (01_data.py, 02_score.py, ...)
+  scripts/precheck/      the data checks run before Step 1
   notebooks/             Colab notebooks that call the package (no logic lives only in a notebook)
   outputs/<system>/<dataset>_<split>.jsonl
   results/               every table (CSV) and figure (PNG) used in the report or slides
@@ -95,7 +98,7 @@ plainmed/
 - Every file starts with a docstring header with the file name, author (Michael Dong), date, what it does, its input and its output.
 - No inline `#` comments and no `====` banners. Explanations go in docstrings and DECISIONS.md.
 - Simple, readable Python. Functions that do one thing. Type hints on public functions.
-- Paths, model names and settings come from `config.yaml`, never hard-coded.
+- Paths, model names and settings come from `config.yaml`, never hard-coded. Anything that must be chosen on validation is written as `TBD_ON_VAL` until it is.
 - Each step has a test file in `tests/` that runs in under a minute with stubs (`pytest -q`).
 
 ## 7. Definition of done (every step)

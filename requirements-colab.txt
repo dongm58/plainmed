@@ -1,0 +1,13 @@
+pyyaml==6.0.3
+textstat==0.7.3
+evaluate==0.4.6
+rouge-score==0.1.2
+sacrebleu==2.6.0
+sacremoses==0.2.0
+bert-score==0.3.13
+transformers==5.23.0
+datasets==5.2.0
+accelerate==1.15.0
+sentencepiece==0.2.3
+gradio==6.32.0
+pytest==9.2.0

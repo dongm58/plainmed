@@ -1,0 +1,72 @@
+project: plainmed
+seed: 42
+
+paths:
+  raw: data/raw
+  processed: data/processed
+  outputs: outputs
+  results: results
+  labels: labels
+  cochrane_repo: data/raw/cochrane_repo
+  cochrane_data: data/raw/cochrane_repo/data/data-1024
+  cells_repo: data/raw/cells_repo
+  cells_unzipped: data/raw/cells_x
+
+sources:
+  cochrane_git: https://github.com/AshOlogn/Paragraph-level-Simplification-of-Medical-Texts
+  cells_git: https://github.com/LinguisticAnomalies/pls_retrieval
+
+datasets:
+  cochrane:
+    splits: [train, val, test]
+    expected_sizes: {train: 3568, val: 411, test: 480}
+  nihr:
+    splits: [test]
+    expected_sizes: {test: 1036}
+    journal_prefix: nhir_
+
+systems: [copy_source, extractive, llm_zeroshot, llm_fewshot, bart_base, bart_cells, reference]
+
+models:
+  bart: facebook/bart-base
+  llm: Qwen/Qwen2.5-3B-Instruct
+  llm_fallback: Qwen/Qwen2.5-1.5B-Instruct
+  nli: MoritzLaurer/DeBERTa-v3-base-mnli-fever-anli
+  bertscore: roberta-large
+
+lengths:
+  max_source_tokens: 1024
+  max_target_tokens: 512
+
+baselines:
+  extractive_k: 3
+
+llm:
+  max_new_tokens: 400
+  do_sample: false
+  prompt_variant: TBD_ON_VAL
+  fewshot_k: 3
+  fewshot_ids: TBD_ON_VAL
+  sensitivity_sample_size: 100
+
+bart:
+  learning_rate: 3.0e-5
+  max_epochs: 10
+  early_stopping_patience: 2
+  per_device_batch_size: 4
+  gradient_accumulation_steps: 4
+  fp16: true
+  decoding: TBD_ON_VAL
+
+checker:
+  threshold: TBD_ON_VAL
+  default_threshold: 0.5
+
+evaluation:
+  bootstrap_resamples: 1000
+  ci_level: 0.95
+
+labels:
+  tune_sentences: 60
+  report_sentences: 60
+  relabel_sentences: 30
