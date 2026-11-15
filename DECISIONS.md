@@ -185,3 +185,47 @@ Faithfulness to the source isn't measured by any of these. That's the checker's 
 3. *Why does extractive have a better grade level than the human summary?* FKGL rewards short sentences and short words, and the baseline picks exactly those. Grade level measures the surface of the text, not whether it says the right things.
 4. *Why not tune k or the tie-break to look better?* The design was fixed in the proposal. Changing it after seeing validation results would be fitting the baseline to the metric.
 5. *Why commit outputs to git?* So the tables, the demo and anyone reproducing the work use the exact same outputs.
+
+## 2026-11-14: Step 4, prompted LLM (code built; Colab run pending)
+
+**What was built:** `plainmed/llm.py` (prompts, few-shot selection, chat-template rendering, output cleaning, batched Hugging Face generator, stub generator, resumable runner), `scripts/04_llm.py` (`smoke`, `sensitivity`, `choose`, `run`), `notebooks/04_llm.ipynb` (Colab T4), and `tests/test_llm.py` (9 tests). All 41 tests pass.
+
+**Model and license (the reviewer asked us to name the models)**
+- **Qwen/Qwen2.5-3B-Instruct**, run in float16 on a free Colab T4. Its license is the **Qwen Research License** (non-commercial research and evaluation use), which fits a course project; the report has to say so.
+- **Fallback: Qwen/Qwen2.5-1.5B-Instruct**, licensed **Apache 2.0**. Used if the smoke test projects that a full validation run takes more than about 2 hours, or if float16 output is broken.
+- **Why an open model instead of an API:** it's free, the exact weights can be named and reused, greedy decoding gives the same output every time, and nothing typed into the demo leaves the machine.
+
+**Prompts.** There are three wordings of the same request, so the prompt-sensitivity check varies only the phrasing:
+- **A** is a plain instruction.
+- **B** gives the model the role of a health educator talking to a 13-year-old.
+- **C** is a numbered list of rules, including "leave out statistics unless needed".
+
+All three ask for one paragraph at about an 8th-grade level that keeps the main findings and the level of certainty and adds no new facts. A short system message ("rewrite medical research for patients without changing what the research found") is the same for all three.
+
+**Few-shot examples.** These are 3 pairs from **train only**, picked at random with seed 42 among the 921 training pairs whose source is at most 250 words and summary at most 180 words, so the prompt stays around 2,000 tokens: `cochrane-train-0088`, `cochrane-train-0486` and `cochrane-train-2521`. They're recorded in config.yaml, and the code refuses to run if the seeded selection ever differs. This isn't a validation-tuned choice, so it was fixed now. They're given as earlier user/assistant turns in the chat.
+- **Risk worth testing:** human summaries sometimes add background that isn't in the abstract, so few-shot examples may teach the model to add unsupported facts. Comparing zero-shot and few-shot flag rates in Step 7 tests this directly.
+
+**Decoding.** Greedy (`do_sample=False`), at most 400 new tokens (the human summaries average about 204 words). Batches of 8 prompts are sorted by length and left-padded.
+- A test on a tiny model built offline confirms that batched generation gives exactly the same tokens as one-at-a-time generation.
+- Every output records its seconds, input and output tokens, whether it hit the 400-token limit (truncated mid-sentence), whether it's one paragraph, and the raw text before cleaning.
+
+**Output cleaning.** Only a leading label such as "Plain-language summary:" or "Here is a simpler version:" is removed, and only when it ends in a colon or a line break. A test caught an early version that cut "Summary" off a real sentence ("Summary of the evidence is unclear."), so this case is now tested.
+
+**Prompt-selection rule, written and committed before any results exist**
+1. A variant is **dropped** if, in either shot setting, fewer than 80% of its outputs are one paragraph, more than 5% hit the token limit, or its mean FKGL is above the human summaries' mean FKGL on the same 100 examples.
+2. Among the variants left, pick the **highest SARI averaged over zero-shot and 3-shot**.
+3. If the top two are within 0.5 SARI, pick the one with the **lower average FKGL**.
+4. If every variant is dropped in step 1, apply step 2 to all of them and report that the rule was relaxed.
+
+The same variant is used for both the zero-shot and the 3-shot system. The sensitivity sample is 100 validation examples drawn with seed 42, the same for all 6 configurations. The faithfulness checker isn't built yet, so it can't be part of the rule; Step 7 will report flag rates for all 6 configurations as a check on the choice.
+
+**How the Colab run works.** The notebook clones the repo, installs `requirements-colab.txt` (keeping Colab's own PyTorch), rebuilds the data, and writes every output straight to Google Drive (`MyDrive/plainmed/step4/`), so a disconnect loses at most one batch. Re-running a cell continues where it stopped. It also runs real BERTScore on 3 examples, which was the item left untested in Step 2.
+
+**Not tested yet (needs the GPU):** the real Qwen model, float16 behavior, speed, real BERTScore, and Colab's package versions.
+
+**Defend it**
+1. *Why three prompt wordings?* Small models can be very sensitive to phrasing. Reporting all six configurations shows how much of the result is the method and how much is the wording.
+2. *Why decide the selection rule before seeing results?* Otherwise the rule could be bent to favor whichever prompt happened to look best, which is a form of overfitting to the validation set.
+3. *Why SARI to choose, if SARI is weak?* It's the only reference-based metric available before the checker exists, and the FKGL and format filters stop it from picking a prompt that just copies the source. The checker results are reported for all variants afterward as a check.
+4. *Why greedy decoding?* It makes results reproducible and removes sampling luck from the comparison. The cost is somewhat blander, sometimes repetitive text.
+5. *Could the few-shot examples leak test information?* No: they come only from train, are chosen by a fixed seed, and are checked against config on every run.

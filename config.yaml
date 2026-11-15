@@ -46,7 +46,7 @@ llm:
   do_sample: false
   prompt_variant: TBD_ON_VAL
   fewshot_k: 3
-  fewshot_ids: TBD_ON_VAL
+  fewshot_ids: [cochrane-train-0088, cochrane-train-0486, cochrane-train-2521]
   sensitivity_sample_size: 100
 
 bart:
