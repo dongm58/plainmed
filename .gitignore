@@ -8,3 +8,4 @@ __pycache__/
 checkpoints/
 *.safetensors
 *.bin
+plainmed.egg-info/

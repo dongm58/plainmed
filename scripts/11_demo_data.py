@@ -76,7 +76,7 @@ def main() -> None:
             if chk_path.exists():
                 checked[system] = {r["id"]: r for r in read_jsonl(chk_path)}
                 threshold = next(iter(checked[system].values()))["checker"]["threshold"]
-        if not outputs.get("llm_fewshot") and not outputs.get("llm_zeroshot"):
+        if not outputs:
             continue
         for e in read_jsonl(path):
             source_sentences = split_sentences(e["source"])
@@ -96,7 +96,8 @@ def main() -> None:
 
     cases_path = ROOT / "demo" / "cases.json"
     cases = json.loads(cases_path.read_text(encoding="utf-8")) if cases_path.exists() else []
-    data = {"systems": SYSTEMS, "threshold": threshold, "nli_model": config["models"]["nli"],
+    present = [k for k in SYSTEMS if any(k in e["systems"] for e in examples_out)]
+    data = {"systems": {k: SYSTEMS[k] for k in present}, "threshold": threshold, "nli_model": config["models"]["nli"],
             "llm_model": config["models"]["llm"], "cases": cases, "examples": examples_out}
     out = ROOT / "docs" / "data.json"
     out.parent.mkdir(parents=True, exist_ok=True)
