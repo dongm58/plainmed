@@ -42,7 +42,9 @@ plainmed/
   outputs/<system>/<dataset>_<split>.jsonl
   results/               every table (CSV) and figure (PNG) used in the report or slides
   labels/                hand-labeling sheets and finished labels
-  demo/app.py
+  demo/cases.json       featured demo examples with notes
+  docs/                  the static demo page (index.html + data.json), servable by GitHub Pages
+  checked/               checker results
   tests/
 ```
 
@@ -65,12 +67,12 @@ plainmed/
 {"id": "cochrane-test-0042", "system": "bart_base", "output": "...", "meta": {"seconds": 1.8}}
 ```
 
-**Checker output** (`outputs/<system>/<dataset>_<split>.checked.jsonl`): the output record plus
+**Checker output** (`checked/<system>/<dataset>_<split>.checked.jsonl`): the output record plus
 
 ```json
-{"sentences": [{"text": "...", "nli_score": 0.91, "best_source_idx": 3,
-                "best_source_text": "...", "number_mismatch": false, "flag": false}],
- "flag_rate": 0.25}
+{"sentences": [{"text": "...", "nli_score": 0.91, "best_source_idx": 3, "best_source_text": "...",
+                "unsupported_numbers": [], "number_mismatch": false, "low_nli": false, "flag": false}],
+ "n_sentences": 4, "n_flagged": 1, "flag_rate": 0.25, "checker": {"model": "...", "threshold": 0.5}}
 ```
 
 ## 4. System names (use exactly these strings)
