@@ -18,6 +18,10 @@ Input: system output files (CONTRACT.md Section 3); the sources come from data/p
 Output:
   <out-root>/checked/<system>/<file>.checked.jsonl   each output record plus per-sentence checker results
   <out-root>/results/checker_summary.csv             one row per input file
+
+Each file's results are written as soon as that file is done, and a file whose
+checked output already covers every id is skipped, so a run cut off by a
+Colab disconnect continues where it stopped (point --out-root at Google Drive).
 """
 
 import argparse
@@ -61,26 +65,31 @@ def main() -> None:
     if threshold is None:
         frozen = config["checker"]["threshold"]
         threshold = frozen if isinstance(frozen, (int, float)) else config["checker"]["default_threshold"]
-    nli = StubNLI() if args.stub else HFNLI(config["models"]["nli"], batch_size=args.batch_size)
+    nli = None
     sources = load_sources(config)
     out_root = Path(args.out_root)
-    rows = []
     for input_path in args.inputs:
         input_path = Path(input_path)
         records = read_jsonl(input_path)
-        checked = []
-        for k, r in enumerate(records):
-            result = check_output(r["output"], sources[r["id"]], nli, threshold)
-            checked.append({**r, **result, "checker": {"model": nli.name, "threshold": threshold}})
-            if (k + 1) % 100 == 0:
-                print(f"{input_path.name}: {k + 1}/{len(records)}", flush=True)
-        system = records[0].get("system", input_path.parent.name) if records else input_path.parent.name
+        out_path = out_root / "checked" / input_path.parent.name / f"{input_path.stem}.checked.jsonl"
         label = f"{input_path.parent.name}/{input_path.stem}"
-        write_jsonl(out_root / "checked" / input_path.parent.name / f"{input_path.stem}.checked.jsonl", checked)
-
+        if out_path.exists() and sorted(c["id"] for c in read_jsonl(out_path)) == sorted(r["id"] for r in records):
+            checked = read_jsonl(out_path)
+            print(f"{label}: already checked, reusing {out_path}", flush=True)
+        else:
+            if nli is None:
+                nli = StubNLI() if args.stub else HFNLI(config["models"]["nli"], batch_size=args.batch_size)
+            checked = []
+            for k, r in enumerate(records):
+                result = check_output(r["output"], sources[r["id"]], nli, threshold)
+                checked.append({**r, **result, "checker": {"model": nli.name, "threshold": threshold}})
+                if (k + 1) % 100 == 0:
+                    print(f"{input_path.name}: {k + 1}/{len(records)}", flush=True)
+            write_jsonl(out_path, checked)
+        system = records[0].get("system", input_path.parent.name) if records else input_path.parent.name
         sentences = [s for c in checked for s in c["sentences"]]
         mean, low, high = bootstrap_ci([c["flag_rate"] for c in checked], seed=config["seed"])
-        rows.append({
+        row = {
             "file": label, "system": system, "n_outputs": len(checked), "n_sentences": len(sentences),
             "flag_rate_mean": mean, "flag_rate_ci_low": low, "flag_rate_ci_high": high,
             "share_sentences_flagged": statistics.mean(s["flag"] for s in sentences) if sentences else 0.0,
@@ -88,20 +97,20 @@ def main() -> None:
             "share_sentences_number_mismatch": statistics.mean(s["number_mismatch"] for s in sentences) if sentences else 0.0,
             "share_outputs_with_any_flag": statistics.mean(c["n_flagged"] > 0 for c in checked) if checked else 0.0,
             "mean_nli_score": statistics.mean(s["nli_score"] for s in sentences) if sentences else 0.0,
-            "threshold": threshold, "nli_model": nli.name, "checked_at": datetime.now().isoformat(timespec="seconds"),
-        })
-        print(f"{label}: {rows[-1]['share_sentences_flagged']:.1%} of sentences flagged "
-              f"({rows[-1]['share_sentences_number_mismatch']:.1%} number mismatch)", flush=True)
-
-    results = out_root / "results"
-    results.mkdir(parents=True, exist_ok=True)
-    path = results / "checker_summary.csv"
-    new = pd.DataFrame(rows)
-    if path.exists():
-        old = pd.read_csv(path)
-        new = pd.concat([old[~old["file"].isin(new["file"])], new], ignore_index=True)
-    new.to_csv(path, index=False)
-    if isinstance(getattr(nli, "truncated", None), int):
+            "threshold": threshold, "nli_model": checked[0]["checker"]["model"] if checked else "",
+            "checked_at": datetime.now().isoformat(timespec="seconds"),
+        }
+        print(f"{label}: {row['share_sentences_flagged']:.1%} of sentences flagged "
+              f"({row['share_sentences_number_mismatch']:.1%} number mismatch)", flush=True)
+        results = out_root / "results"
+        results.mkdir(parents=True, exist_ok=True)
+        path = results / "checker_summary.csv"
+        new = pd.DataFrame([row])
+        if path.exists():
+            old = pd.read_csv(path)
+            new = pd.concat([old[old["file"] != label], new], ignore_index=True)
+        new.to_csv(path, index=False)
+    if nli is not None and isinstance(getattr(nli, "truncated", None), int):
         print(f"NLI inputs cut at {nli.max_length} tokens: {nli.truncated}")
 
 

@@ -128,3 +128,7 @@ def test_script_end_to_end_with_stub(tmp_path):
     assert len(checked) == 5 and all("sentences" in c and "flag_rate" in c for c in checked)
     summary = pd.read_csv(tmp_path / "results" / "checker_summary.csv")
     assert summary.loc[0, "n_outputs"] == 5 and summary.loc[0, "threshold"] == 0.5
+    again = subprocess.run([sys.executable, str(repo_path("scripts/07_check.py")), "--inputs", str(path), "--stub",
+                            "--out-root", str(tmp_path)], check=True, capture_output=True, text=True)
+    assert "already checked" in again.stdout
+    assert len(pd.read_csv(tmp_path / "results" / "checker_summary.csv")) == 1
