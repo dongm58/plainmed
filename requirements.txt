@@ -5,6 +5,7 @@ pandas==3.1.1
 scikit-learn==1.9.1
 matplotlib==3.11.2
 textstat==0.7.3
+setuptools==81.0.0
 evaluate==0.4.6
 rouge-score==0.1.2
 sacrebleu==2.6.0

@@ -70,7 +70,7 @@ Scripts are in `scripts/precheck/`; the full output is in `results/precheck_2026
 
 **Choices**
 - **Normalization:** Unicode NFKC plus whitespace collapsing, applied once to every source and target so all systems get byte-identical input. NFKC also turns ligatures and full-width characters into plain ones (for example "ﬁ" becomes "fi").
-- **A rule-based sentence splitter instead of spaCy.** It splits after `.`, `!` or `?` only when the next word starts with a capital letter, digit or quote, and never after a known abbreviation (e.g., vs., et al.) or a single initial. Decimals ("0.82") and confidence intervals are safe because there's no space after the decimal point. It passes a test of 10 real Cochrane sentences with CIs, fractions and quotes. It was chosen because it's deterministic and needs no model download, so the checker and the demo split sentences the same way in my workspace, in Colab and on the laptop.
+- **A rule-based sentence splitter instead of spaCy (decided by comparison, see the audit entry below).** It splits after `.`, `!` or `?` only when the next word starts with a capital letter, digit or quote, and never after a known abbreviation (e.g., vs., et al.), a single initial, or a numbered-list marker ("1."). Decimals ("0.82") and confidence intervals are safe because there's no space after the decimal point. It passes a test of 10 real Cochrane sentences with CIs, fractions and quotes.
 - **NIHR:** taken from all three CELLS splits because NIHR is only a test set for us. Exact duplicate (abstract, summary) pairs are removed, keeping the first copy, which leaves 1,036 pairs across 5 NIHR series. Each record keeps `title`, `series` and `cells_split`.
 - **IDs** are `<dataset>-<split>-<4-digit line number>`, so any record can be traced back to its line in the original files.
 
@@ -90,3 +90,31 @@ Scripts are in `scripts/precheck/`; the full output is in `results/precheck_2026
 3. *What does the NIHR format difference mean for conclusions?* A drop on NIHR can't be blamed only on the new source: the inputs are also longer and include background and methods. The report says this, and the Results-only follow-up would separate the two.
 4. *Why did FKGL change from the proposal?* The proposal used a rough syllable counter; the final number uses textstat on number-masked text, because unmasked decimals break sentence counting.
 5. *How would someone rebuild the data?* `python scripts/01_data.py`. It clones both repositories, unzips CELLS, and writes the same files with the same ids.
+
+## 2026-11-14: Audit of Steps 0 and 1
+
+Checked both steps against their prompts and rebuilt everything from a fresh clone of the GitHub repo on **Python 3.11.15** in a clean virtual environment (the laptop's version), not on the workspace's own Python.
+
+**Problems found and fixed**
+1. **textstat 0.7.3 crashed on a fresh install.** It imports `pkg_resources`, which setuptools removed in version 82. My workspace hid this because it had an old setuptools. Fix: `setuptools==81.0.0` pinned in both requirements files. Verified: it fails with 82.0.1 and 83.0.0 and works with 81.0.0.
+2. **The Step 1 prompt said to use spaCy if it installs, and I hadn't tried.** It does install (spaCy 3.8.18 + en_core_web_sm 3.8.0). Both splitters pass the 10-real-sentence test, so I compared them on 100 seeded validation abstracts. They gave identical splits on 87 of them. On the 13 disagreements:
+   - The rule-based splitter was right on 10. spaCy split mid-sentence after units ("156/101 mm" | "Hg."), inside lists of abbreviations, before a parenthesized CI, and in plain sentences ("quality of life and" | "immunological function.").
+   - spaCy was right on 2: a missing space in the source ("each study.The Nerve…") and a source typo ("(RR 0.62. 95% CI…)").
+   - One was a rule-based bug that this comparison exposed and I fixed: a unit ending in a single letter ("3.5 g/d. No trials…") was treated like an initial, so the sentences weren't split.
+   - The comparison also exposed a second bug: a numbered list ("1. Chlorpromazine versus…") was split into a lone "1." sentence.
+   **Decision: keep the rule-based splitter.** It's more accurate on this data, it's deterministic, and it needs no model download for the demo. Both fixes have tests.
+3. **Unmeasured claim removed.** The first version of the Step 1 entry gave a percentage of NIHR abstracts over 1,024 tokens that had never been measured. It now says Step 5 will measure it.
+
+**Verified**
+- On Python 3.11: every pinned package except torch installs and imports together, including transformers, gradio, evaluate, sacrebleu, rouge-score, bert-score, datasets and accelerate. Torch isn't installed or tested yet; that happens in the first model step.
+- From an empty folder, `python scripts/01_data.py` clones both repositories, builds the data in about 25 seconds, and the processed files are **byte-identical** to the ones in my working copy. The data stats are identical too.
+- All 16 tests pass.
+
+**Deviations from the prompts (on purpose)**
+- Step 0 said to leave the "Proposal to final" table empty; it was filled in early from the data pre-checks and the reviewer's feedback, because those changes were already known.
+- Step 1 said to reuse `scripts/precheck/`; that logic now lives in `plainmed/data.py` instead (so Step 6 can import it), and the results match the pre-check output exactly. The precheck scripts stay in the repo as the record of what was checked before building.
+
+**Defend it**
+1. *Why trust a hand-written splitter over spaCy?* Because I measured it: on 100 real abstracts it was right in 10 of the 13 disagreements, and spaCy's errors (splitting "mm | Hg.") would create fake "unsupported sentences" for the checker.
+2. *What would a fresh-install bug have cost?* The demo or a grader's reproduction would crash on the first readability score. Testing from a clean clone on the same Python as the laptop is what caught it.
+3. *Is the regex splitter perfect?* No: it can't split when the source is missing a space after a period, and it splits on typos like "(RR 0.62. 95% CI". Both are rare (2 of 100 abstracts).

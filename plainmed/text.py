@@ -10,9 +10,10 @@ What it does: Small text utilities shared by every step.
   target once in Step 1 so all systems see identical input.
 - split_sentences(): a rule-based sentence splitter built for medical abstracts.
   It never splits inside decimals ("0.82", "95% CI 0.70 to 0.96") or after
-  common abbreviations ("e.g.", "vs.", "et al."). A rule-based splitter was
-  chosen over spaCy so the same deterministic splitter runs in my workspace,
-  in Colab and on the laptop without downloading a language model.
+  common abbreviations ("e.g.", "vs.", "et al."), and keeps numbered-list
+  markers ("1. Chlorpromazine versus ...") attached to their item. A rule-based splitter was
+  chosen over spaCy after comparing both on 100 validation abstracts (see
+  DECISIONS.md): spaCy split mid-sentence on units ("mm Hg.") and lists.
 - mask_numbers(): replaces every number with NUM before readability scoring,
   because textstat counts decimal points as sentence ends (see DECISIONS.md).
 - word_count(), digit_count(), digits_per_100(): simple length and number-density counts.
@@ -31,6 +32,7 @@ ABBREVIATIONS = {
 }
 
 SENTENCE_END = re.compile(r"(?<=[.!?])[\"'”’)\]]*\s+(?=[\"'“‘(\[]?[A-Z0-9])")
+LIST_MARKER = re.compile(r"\(?\d{1,2}[.)]")
 NUMBER = re.compile(r"\d+(?:[.,]\d+)*")
 WORD = re.compile(r"\S+")
 
@@ -43,7 +45,7 @@ def normalize(text: str) -> str:
 
 def _ends_with_abbreviation(chunk: str) -> bool:
     """True if the chunk ends in a period that belongs to an abbreviation or a single initial."""
-    match = re.search(r"([A-Za-z][A-Za-z.]*)\.[\"'”’)\]]*$", chunk)
+    match = re.search(r"(?:^|[\s(\[])([A-Za-z][A-Za-z.]*)\.[\"'”’)\]]*$", chunk)
     if not match:
         return False
     token = match.group(1).lower()
@@ -59,7 +61,7 @@ def split_sentences(text: str) -> list[str]:
     start = 0
     for match in SENTENCE_END.finditer(text):
         chunk = text[start:match.start()]
-        if _ends_with_abbreviation(chunk):
+        if _ends_with_abbreviation(chunk) or LIST_MARKER.fullmatch(chunk.strip()):
             continue
         pieces.append(text[start:match.end()].strip())
         start = match.end()

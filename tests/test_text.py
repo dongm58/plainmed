@@ -50,6 +50,25 @@ def test_splitter_splits_before_digits_and_quotes():
     ]
 
 
+def test_splitter_keeps_numbered_list_markers():
+    text = "Three comparisons were made. 1. Chlorpromazine versus olanzapine: no clear difference. 2. Chlorpromazine versus risperidone: no difference. The mean age was 63. Most were women."
+    assert split_sentences(text) == [
+        "Three comparisons were made.",
+        "1. Chlorpromazine versus olanzapine: no clear difference.",
+        "2. Chlorpromazine versus risperidone: no difference.",
+        "The mean age was 63.",
+        "Most were women.",
+    ]
+
+
+def test_splitter_unit_ending_in_single_letter():
+    text = "The mean dose of omega-3 PUFA used in the trials was 3.5 g/d. No trials with vascular events were identified."
+    assert split_sentences(text) == [
+        "The mean dose of omega-3 PUFA used in the trials was 3.5 g/d.",
+        "No trials with vascular events were identified.",
+    ]
+
+
 def test_splitter_empty():
     assert split_sentences("   ") == []
 
