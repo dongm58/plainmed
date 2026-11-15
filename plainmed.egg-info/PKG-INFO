@@ -1,0 +1,6 @@
+Metadata-Version: 2.4
+Name: plainmed
+Version: 0.1.0
+Summary: Plain-language rewriting of Cochrane review abstracts, with a faithfulness checker
+Author: Michael Dong
+Requires-Python: >=3.11

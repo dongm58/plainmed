@@ -119,3 +119,39 @@ Checked both steps against their prompts and rebuilt everything from a fresh clo
 1. *Why trust a hand-written splitter over spaCy?* Because I measured it: on 100 real abstracts it was right in 10 of the 12 disagreements left after fixing two bugs, and spaCy's errors (splitting "mm | Hg.") would create fake "unsupported sentences" for the checker.
 2. *What would a fresh-install bug have cost?* The demo or a grader's reproduction would crash on the first readability score. Testing from a clean clone on the same Python as the laptop is what caught it.
 3. *Is the regex splitter perfect?* No: it can't split when the source is missing a space after a period, and it splits on typos like "(RR 0.62. 95% CI". Both are rare (2 of 100 abstracts).
+
+## 2026-11-14: Step 2, metrics
+
+**What was built:** `plainmed/sari.py` (SARI), `plainmed/metrics.py` (per-example scoring, bootstrap CIs, paired bootstrap, summary upsert), `scripts/02_score.py`, and `tests/test_metrics.py` (11 tests). The project now has its own Python 3.11 environment (`.venv`, not committed), and all 27 tests pass in it.
+
+**Each metric, why it's there, and what it can't tell us**
+
+| Metric | Why | Can't tell us |
+|---|---|---|
+| FKGL, numbers masked | The standard readability formula; the task is about readability | It only counts sentence length and syllables, so it can't see jargon that has few syllables ("RCT") or tell whether the text makes sense. Readability formulas were also built for general English, not health text |
+| Raw FKGL (appendix only) | Shows why masking was needed | Unmasked decimals make number-heavy text look easy |
+| Words | Plain-language summaries condense; length shows whether a system just copies | Shorter isn't automatically clearer |
+| Digits per 100 words | Our data exploration found that simplification here mostly means dropping statistics (21.3 to 5.2) | It can't say whether the *right* numbers were kept |
+| SARI | The standard simplification metric: rewards keeping, deleting and adding the same n-grams the human did | There's only one reference per example, and the references are weak (only 1.4 grades simpler than the source), so SARI partly measures "wrote like this particular author" |
+| ROUGE-L | Content overlap with the reference | Rewards copying; says nothing about faithfulness to the *source* |
+| BERTScore F1 | Overlap of meaning, not exact words, so it gives credit for paraphrases | Still compared with the weak reference; roberta-large reads at most 512 tokens, so long texts are cut off |
+
+Faithfulness to the source isn't measured by any of these. That's the checker's job (Step 7) and the hand labels' job (Step 8).
+
+**Choices**
+- **SARI is copied from `evaluate` instead of called through it.** `evaluate.load("sari")` downloads the metric's code from the Hugging Face Hub every time it runs, which fails offline (including in my workspace). The copy keeps the same logic (Apache 2.0 license, credited in the file). Verified two ways: it reproduces the value in evaluate's documentation (26.9536…), and it gives **exactly the same score as evaluate's original code (maximum difference 0) on 2,466 real cases**: 411 validation examples × 6 kinds of output (copy the source, the reference itself, the first 3 sentences, a random half of the sentences, an empty string, and a one-sentence summary).
+- **SARI is scored per example and averaged.** That's how evaluate defines the corpus score anyway, and per-example scores are needed for the bootstrap.
+- A quirk worth knowing for the defense: the reference compared with itself gets a SARI of **97.5, not 100**, because of how the keep and delete parts are defined. So the `reference` system's SARI, ROUGE-L and BERTScore are left empty rather than reported.
+- **ROUGE-L comes from the `rouge_score` package** (with stemming), for the same reason as SARI: evaluate's version downloads from the Hub.
+- **BERTScore** uses roberta-large rescaled with the baseline file that ships with bert_score, so scores spread over a readable range instead of all sitting near 0.85–0.90. It only runs for real in Colab. The test stand-in writes to a column named `bertscore_f1_STUB`, so a fake score can never end up in a results table by mistake.
+- **Bootstrap:** 1,000 resamples of examples, percentile 95% CI, seed 42. The paired bootstrap resamples the *same* examples for both systems, which is the right test when two systems are compared on one test set.
+- **`results/summary.csv` replaces a row instead of appending a duplicate** when a system is re-scored, so re-running a step can't leave two different numbers for the same system.
+
+**Not tested yet:** real BERTScore, because it needs to download roberta-large, which is blocked here. The first Colab notebook will run it on a few examples as a check.
+
+**Defend it**
+1. *Why not just use evaluate.load?* It fetches code from the internet at run time, so a result could change if the hosted script changed, and it can't run offline. The copied version is checked to give identical scores on 2,466 cases.
+2. *Why mask numbers for FKGL instead of using a different formula?* Every common formula uses words per sentence, and the sentence counting is what breaks. Masking fixes the cause, and digits per 100 words still tracks the numbers.
+3. *If SARI rewards matching a weak reference, why report it?* It's the field's standard, so readers expect it. But the conclusions weight readability and faithfulness more, as the proposal's risk table said they would.
+4. *What does a confidence interval mean here?* If we drew new test sets of the same size from the same population, about 95% of intervals built this way would contain the true mean score. It shows how much a number could move just from which examples happened to be in the test set.
+5. *Why a paired bootstrap for comparing systems?* Some abstracts are harder than others for every system. Pairing compares systems on the same abstracts, which removes that shared difficulty and gives a fairer and tighter comparison.
