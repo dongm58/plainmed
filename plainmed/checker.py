@@ -30,7 +30,7 @@ The threshold starts at 0.5 and is tuned on hand-labeled validation sentences in
 
 Input: a system output and its source abstract.
 Output: per-sentence scores, the best supporting source text, number problems,
-flags, and the share of flagged sentences (CONTRACT.md Section 3).
+flags, and the share of flagged sentences.
 """
 
 import re

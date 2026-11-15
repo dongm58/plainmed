@@ -6,7 +6,7 @@ Date: November 14, 2026
 Project: PlainMed (COSC 72/272 final project)
 
 What it does: Gets the raw data, turns it into the processed JSONL format from
-CONTRACT.md Section 3, and runs the data checks.
+the project's processed JSONL format, and runs the data checks.
 - ensure_raw(): clones the Cochrane (Devaraj et al. 2021) and CELLS (Guo et al.
   2024) repositories and unzips CELLS if they are not already in data/raw/.
 - load_cochrane(): one record per line of data-1024/{split}.source/.target/.doi.

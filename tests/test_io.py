@@ -6,7 +6,7 @@ Date: November 14, 2026
 Project: PlainMed (COSC 72/272 final project)
 
 What it does: Checks that JSONL files round-trip, that appending and resuming
-work, and that config.yaml loads and agrees with CONTRACT.md.
+work, and that config.yaml loads with the expected settings.
 
 Input: a temporary folder from pytest and the repo's config.yaml.
 Output: pass/fail results from pytest.
@@ -14,7 +14,7 @@ Output: pass/fail results from pytest.
 
 from plainmed.io import append_jsonl, done_ids, load_config, read_jsonl, repo_path, write_jsonl
 
-CONTRACT_SYSTEMS = ["copy_source", "extractive", "llm_zeroshot", "llm_fewshot", "bart_base", "reference"]
+EXPECTED_SYSTEMS = ["copy_source", "extractive", "llm_zeroshot", "llm_fewshot", "bart_base", "reference"]
 
 
 def test_jsonl_round_trip(tmp_path):
@@ -43,10 +43,10 @@ def test_write_replaces_file(tmp_path):
     assert done_ids(path) == {"new"}
 
 
-def test_config_loads_and_matches_contract():
+def test_config_loads_with_expected_settings():
     config = load_config()
     assert config["seed"] == 42
-    assert config["systems"] == CONTRACT_SYSTEMS
+    assert config["systems"] == EXPECTED_SYSTEMS
     assert config["datasets"]["cochrane"]["expected_sizes"] == {"train": 3568, "val": 411, "test": 480}
     assert config["datasets"]["nihr"]["expected_sizes"] == {"test": 1036}
     assert config["models"]["bart"] == "facebook/bart-base"

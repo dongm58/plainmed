@@ -6,7 +6,7 @@ Date: November 14, 2026
 Project: PlainMed (COSC 72/272 final project)
 
 What it does: Loads config.yaml and reads/writes JSONL files, the one file
-format every step of the project uses (see CONTRACT.md Section 3).
+format every step of the project uses.
 append_jsonl and done_ids exist so long Colab runs can be resumed after a
 disconnect without redoing finished examples.
 

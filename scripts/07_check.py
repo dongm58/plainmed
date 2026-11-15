@@ -14,7 +14,7 @@ Usage:
   python scripts/07_check.py --inputs ... --out-root /content/drive/MyDrive/plainmed/step7 --threshold 0.5
   python scripts/07_check.py --inputs ... --stub        (fake NLI model, for tests)
 
-Input: system output files (CONTRACT.md Section 3); the sources come from data/processed/.
+Input: system output files; the sources come from data/processed/.
 Output:
   <out-root>/checked/<system>/<file>.checked.jsonl   each output record plus per-sentence checker results
   <out-root>/results/checker_summary.csv             one row per input file

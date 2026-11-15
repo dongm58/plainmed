@@ -14,7 +14,7 @@ What it does: Step 4, the prompted LLM. Three subcommands, run in this order
   sensitivity  prompt variants A, B, C x {zero-shot, 3-shot} on the same 100
                seeded validation examples, then score them
                -> results/prompt_sensitivity.csv
-  choose       apply the selection rule fixed in DECISIONS.md before any
+  choose       apply the selection rule fixed before any
                results were seen -> results/prompt_choice.json
   run          one system (zero-shot or 3-shot) with one variant on a full split
                -> outputs/llm_zeroshot/<dataset>_<split>.jsonl (or llm_fewshot)
@@ -132,7 +132,7 @@ def cmd_sensitivity(args, config) -> None:
 
 
 def choose_variant(table: pd.DataFrame) -> dict:
-    """The selection rule written in DECISIONS.md before any results existed.
+    """The selection rule, written and committed before any results existed.
 
     1. Drop a variant if, in either shot setting, fewer than 80% of outputs are one
        paragraph, more than 5% hit the token limit, or its mean FKGL is above the
@@ -181,7 +181,7 @@ def cmd_run(args, config) -> None:
     setting = f"{args.shots}shot"
     examples = read_jsonl(repo_path(config["paths"]["processed"]) / args.dataset / f"{args.split}.jsonl")
     if args.split == "test":
-        print("Note: test split. CONTRACT.md rule 1 says test is only run in Step 9.")
+        print("Note: test split. The test set should only be run in Step 9.")
     generator = load_generator(args, config)
     path = Path(args.out_root) / "outputs" / f"llm_{setting}" / f"{args.dataset}_{args.split}.jsonl"
     run_system(examples, f"llm_{setting}", variant, get_shots(config, SHOT_SETTINGS[setting]), generator, path, args.batch_size, log_every=10)

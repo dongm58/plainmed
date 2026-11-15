@@ -29,7 +29,7 @@ used only by tests and dry runs, written to a column named
 bertscore_f1_STUB so it can never be mistaken for the real thing), and
 "real" (bert_score with the model named in config.yaml).
 
-Input: system outputs and processed examples (CONTRACT.md Section 3).
+Input: system outputs and processed examples.
 Output: a per-example DataFrame, summary rows with confidence intervals, and
 paired-bootstrap comparisons between two systems.
 """

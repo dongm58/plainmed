@@ -12,10 +12,10 @@ What it does: Small text utilities shared by every step.
   It never splits inside decimals ("0.82", "95% CI 0.70 to 0.96") or after
   common abbreviations ("e.g.", "vs.", "et al."), and keeps numbered-list
   markers ("1. Chlorpromazine versus ...") attached to their item. A rule-based splitter was
-  chosen over spaCy after comparing both on 100 validation abstracts (see
-  DECISIONS.md): spaCy split mid-sentence on units ("mm Hg.") and lists.
+  chosen over spaCy after comparing both on 100 validation abstracts:
+  spaCy split mid-sentence on units ("mm Hg.") and lists.
 - mask_numbers(): replaces every number with NUM before readability scoring,
-  because textstat counts decimal points as sentence ends (see DECISIONS.md).
+  because textstat counts decimal points as sentence ends.
 - word_count(), digit_count(), digits_per_100(): simple length and number-density counts.
 
 Input: raw strings.

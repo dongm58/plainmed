@@ -8,7 +8,7 @@ Project: PlainMed (COSC 72/272 final project)
 What it does: Step 3. Writes the outputs of the two baselines and of the
 `reference` system (the human summary) for one dataset split, then scores all
 three with plainmed/metrics.py. By default it runs only on Cochrane val:
-test and NIHR are run once, in Step 9 (CONTRACT.md rule 1).
+test and NIHR are run once, in Step 9, after every choice is fixed.
 
 Usage: python scripts/03_baselines.py [--dataset cochrane --split val]
 
@@ -39,7 +39,7 @@ def main() -> None:
     parser.add_argument("--split", default="val", choices=["train", "val", "test"])
     args = parser.parse_args()
     if args.split == "test":
-        print("Note: test split. CONTRACT.md rule 1 says test is only run in Step 9.")
+        print("Note: test split. The test set should only be run in Step 9.")
 
     examples = read_jsonl(repo_path(config["paths"]["processed"]) / args.dataset / f"{args.split}.jsonl")
     k = config["baselines"]["extractive_k"]

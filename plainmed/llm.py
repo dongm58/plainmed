@@ -27,7 +27,7 @@ What it does: The prompted-LLM systems (llm_zeroshot and llm_fewshot).
   the batch in progress.
 
 Input: processed examples and the llm settings in config.yaml.
-Output: system outputs in the CONTRACT.md format, with timing and token counts in meta.
+Output: system outputs (id, system, output, meta), with timing and token counts in meta.
 """
 
 import random
