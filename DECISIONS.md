@@ -61,3 +61,32 @@ Scripts are in `scripts/precheck/`; the full output is in `results/precheck_2026
 3. *Why not pin torch on Colab?* Colab's torch is built for its GPU drivers; a different pinned version could install a CPU-only build or a mismatched CUDA build.
 4. *What stops you from tuning on the test set by accident?* The `TBD_ON_VAL` placeholders plus the check at the start of Step 9.
 5. *Why Python 3.11?* It's supported by every pinned package, and brand-new Python versions often lack PyTorch wheels.
+
+## 2026-11-14: Step 1, data
+
+**What was built:** `plainmed/text.py` (normalize, sentence splitter, number masking, counts), `plainmed/data.py` (download, loaders, NIHR filter and dedup, n-gram near-duplicate index, checks, stats), `scripts/01_data.py`, and tests (`tests/test_text.py`, `tests/test_data.py`). All 14 tests pass.
+
+**Outputs:** `data/processed/cochrane/{train,val,test}.jsonl` (3,568 / 411 / 480), `data/processed/nihr/test.jsonl` (1,036), `results/data_checks.json` (no problems found), and `results/data_stats.csv`. The processed data isn't committed to git; `python scripts/01_data.py` rebuilds it in about 20 seconds, cloning the repositories first if needed.
+
+**Choices**
+- **Normalization:** Unicode NFKC plus whitespace collapsing, applied once to every source and target so all systems get byte-identical input. NFKC also turns ligatures and full-width characters into plain ones (for example "ﬁ" becomes "fi").
+- **A rule-based sentence splitter instead of spaCy.** It splits after `.`, `!` or `?` only when the next word starts with a capital letter, digit or quote, and never after a known abbreviation (e.g., vs., et al.) or a single initial. Decimals ("0.82") and confidence intervals are safe because there's no space after the decimal point. It passes a test of 10 real Cochrane sentences with CIs, fractions and quotes. It was chosen because it's deterministic and needs no model download, so the checker and the demo split sentences the same way in my workspace, in Colab and on the laptop.
+- **NIHR:** taken from all three CELLS splits because NIHR is only a test set for us. Exact duplicate (abstract, summary) pairs are removed, keeping the first copy, which leaves 1,036 pairs across 5 NIHR series. Each record keeps `title`, `series` and `cells_split`.
+- **IDs** are `<dataset>-<split>-<4-digit line number>`, so any record can be traced back to its line in the original files.
+
+**Numbers compared with the proposal**
+- The sizes match (3,568 / 411 / 480). The word counts match (source mean 351 and median 320, target mean 212 and median 198). 92.0% of targets are shorter than their sources (same as the proposal). Digits per 100 words: 21.3 vs 5.2 (same).
+- FKGL changed from 15.5 / 14.2 (hand-written syllable counter) to **14.2 / 12.8** (textstat with numbers masked). The gap is about the same.
+- "Mentions CI" changed from 2,716 / 53 to **2,707 / 26**. The final count matches "CI" only as a whole, case-sensitive word, so it no longer counts words that merely contain those letters.
+
+**Something found that matters later: NIHR inputs are a different format.** Cochrane sources are only the *results section* (14 sentences on average). NIHR sources are *full structured abstracts* with section names run into the text ("Background ... Objectives ... Design ... Results ... Conclusions ... Limitations ... Future work"), averaging 31 sentences and 551 words. So NIHR tests a change in source *and* in input format. This stays as in the proposal (full abstract as input), and the report has to say so when interpreting NIHR results. A follow-up, if time allows, is to feed only the Results and Conclusions sections of NIHR abstracts and see whether the gap shrinks. About 1.5% of NIHR abstracts may also go over BART's 1,024-token limit; Step 5 measures this exactly.
+
+**Dataset paragraph for the report (draft)**
+> We use the Cochrane paragraph-level simplification dataset of Devaraj et al. (2021): 4,459 pairs of a systematic-review abstract's results section and the review's author-written plain-language summary, split 3,568 / 411 / 480 for train / validation / test as released. The repository is licensed CC BY 4.0, and the underlying text belongs to Cochrane and is used here for non-commercial research. Sources average 351 words and a grade level of 14.2 (Flesch–Kincaid computed with numbers masked), and targets average 212 words at grade 12.8, with four times fewer digits (21.3 vs 5.2 per 100 words). As a second, independent test set we use the NIHR subset of CELLS (Guo et al., 2024; MIT License): plain-language summaries of UK National Institute for Health and Care Research reports. After removing 251 exact duplicate pairs, it has 1,036 pairs, taken from all CELLS splits, since we never train on it. NIHR inputs are full structured abstracts (551 words on average) and share no abstracts with Cochrane. Neither dataset contains patient records.
+
+**Defend it**
+1. *Why not use spaCy for sentences?* Same splitter everywhere with no model download; it handles the specific traps in this data (decimals, CIs, "et al."), and the test proves it on real sentences.
+2. *Why include NIHR from CELLS's train split in a test set?* We never train on CELLS in the main systems, so its own split labels don't matter to us. What matters is that NIHR shares nothing with Cochrane, which the checks confirm.
+3. *What does the NIHR format difference mean for conclusions?* A drop on NIHR can't be blamed only on the new source: the inputs are also longer and include background and methods. The report says this, and the Results-only follow-up would separate the two.
+4. *Why did FKGL change from the proposal?* The proposal used a rough syllable counter; the final number uses textstat on number-masked text, because unmasked decimals break sentence counting.
+5. *How would someone rebuild the data?* `python scripts/01_data.py`. It clones both repositories, unzips CELLS, and writes the same files with the same ids.

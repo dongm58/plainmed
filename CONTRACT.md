@@ -29,6 +29,7 @@ plainmed/
     processed/           cleaned JSONL (format in Section 3)
   plainmed/              the Python package
     io.py                read/write JSONL, load config
+    data.py              download, load and check the datasets (Step 1)
     text.py              normalization, sentence splitting, number extraction
     metrics.py           readability + reference metrics + bootstrap
     baselines.py
@@ -55,7 +56,7 @@ plainmed/
  "doi": "10.1002/14651858.CD000000"}
 ```
 
-- `dataset` is `cochrane` or `nihr`. `split` is `train`, `val` or `test`. NIHR has only `test` (1,036 deduplicated pairs, pulled from all three CELLS splits). NIHR records also carry `series` (e.g. `nhir_Health_Technology_Assessment`) and `cells_split`; NIHR has no DOI, so `doi` is null.
+- `dataset` is `cochrane` or `nihr`. `split` is `train`, `val` or `test`. NIHR has only `test` (1,036 deduplicated pairs, pulled from all three CELLS splits). NIHR records also carry `title`, `series` (e.g. `nhir_Health_Technology_Assessment`) and `cells_split`; NIHR has no DOI, so `doi` is null.
 - `id` is `<dataset>-<split>-<4-digit index>` and never changes once written. Every later file joins on `id`.
 
 **System output** (`outputs/<system>/<dataset>_<split>.jsonl`):

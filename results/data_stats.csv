@@ -1,0 +1,9 @@
+dataset,split,side,n,mean_words,median_words,min_words,max_words,fkgl_numbers_masked,fkgl_raw,digits_per_100_words,n_mentioning_CI,pct_mentioning_CI,pct_target_shorter_than_source
+cochrane,train,source,3568,350.9,319.5,129,772,14.24,10.33,21.35,2707,75.9,
+cochrane,train,target,3568,212.3,198.0,27,690,12.76,12.63,5.22,26,0.7,92.0
+cochrane,val,source,411,347.3,319.0,149,766,14.28,10.48,20.84,297,72.3,
+cochrane,val,target,411,204.2,193.0,38,578,12.85,12.7,5.15,2,0.5,94.4
+cochrane,test,source,480,349.6,326.5,135,753,14.1,10.4,20.0,357,74.4,
+cochrane,test,target,480,214.5,200.5,32,577,12.53,12.42,5.25,1,0.2,91.5
+nihr,test,source,1036,551.0,545.0,120,860,13.15,13.11,11.47,289,27.9,
+nihr,test,target,1036,290.5,288.0,149,607,11.95,11.94,3.27,0,0.0,98.8

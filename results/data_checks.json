@@ -1,0 +1,86 @@
+{
+  "expected_sizes": {
+    "cochrane": {
+      "splits": [
+        "train",
+        "val",
+        "test"
+      ],
+      "expected_sizes": {
+        "train": 3568,
+        "val": 411,
+        "test": 480
+      }
+    },
+    "nihr": {
+      "splits": [
+        "test"
+      ],
+      "expected_sizes": {
+        "test": 1036
+      },
+      "journal_prefix": "nhir_"
+    }
+  },
+  "sizes": {
+    "cochrane_train": 3568,
+    "cochrane_val": 411,
+    "cochrane_test": 480,
+    "nihr_test": 1036
+  },
+  "problems": [],
+  "cochrane_train": {
+    "empty_source": 0,
+    "empty_target": 0,
+    "duplicate_source": 0,
+    "duplicate_target": 0,
+    "duplicate_doi": 0,
+    "missing_doi": 0
+  },
+  "cochrane_val": {
+    "empty_source": 0,
+    "empty_target": 0,
+    "duplicate_source": 0,
+    "duplicate_target": 0,
+    "duplicate_doi": 0,
+    "missing_doi": 0
+  },
+  "cochrane_test": {
+    "empty_source": 0,
+    "empty_target": 0,
+    "duplicate_source": 0,
+    "duplicate_target": 0,
+    "duplicate_doi": 0,
+    "missing_doi": 0
+  },
+  "cochrane_cross_split_source_overlap": {
+    "train-val": 0,
+    "train-test": 0,
+    "val-test": 0
+  },
+  "nihr": {
+    "nihr_rows_before_dedup": 1287,
+    "nihr_rows_by_cells_split": {
+      "train": 926,
+      "val": 252,
+      "test": 109
+    },
+    "nihr_duplicate_rows_removed": 251,
+    "nihr_rows_after_dedup": 1036,
+    "nihr_series": {
+      "nhir_Health_Technology_Assessment": 475,
+      "nhir_Health_Services_and_Delivery_Research": 375,
+      "nhir_Programme_Grants_for_Applied_Research": 67,
+      "nhir_Public_Health_Research": 61,
+      "nhir_Efficaacy_and_Mechanism_Evaluation": 58
+    },
+    "empty_source": 0,
+    "empty_target": 0
+  },
+  "nihr_exact_overlap_with_cochrane": {
+    "train": 0,
+    "val": 0,
+    "test": 0
+  },
+  "nihr_ngram_overlap_with_cochrane_test_val": 0
+}
