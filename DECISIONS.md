@@ -250,3 +250,33 @@ I decided to skip the optional Cochrane + CELLS experiment. `bart_cells` was rem
 1. *Why drop it?* It answered a side question (does extra non-patient science text help?) and would have cost a second full BART training run, time better spent on the checker and the hand labels, which are the project's main contribution.
 2. *What would you have had to do to run it safely?* Remove every CELLS pair that overlaps Cochrane val or test by n-gram overlap (229 test and 185 val sources would have leaked with exact matching), remove internal duplicates and NIHR, then train with identical settings so only the data differs.
 3. *What do you expect it would have shown?* Unknown: more data helps fluency, but 91% of CELLS is written for scientists rather than patients, so it could make outputs less plain. That uncertainty is why it's listed as future work rather than claimed either way.
+
+### 2026-11-15: Step 4 results on Colab (prompt sensitivity and full validation runs)
+
+**Prompt sensitivity** (same 100 seeded validation examples; the human summaries on this sample have FKGL 13.29):
+
+| Variant | Shots | SARI | FKGL | Words | Digits/100 | One paragraph | Hit token limit | s/example |
+|---|---|---|---|---|---|---|---|---|
+| A (plain request) | zero | 36.0 | 7.7 | 200 | 3.4 | 43% | 1% | 2.4 |
+| A | 3-shot | 36.9 | 8.4 | 155 | 4.4 | 86% | 0% | 2.8 |
+| B (health educator) | zero | 34.5 | 7.6 | 158 | 1.8 | 61% | 0% | 2.0 |
+| B | 3-shot | 35.6 | 8.3 | 134 | 3.3 | 96% | 0% | 2.5 |
+| C (rule list) | zero | 35.8 | 7.7 | 154 | 3.2 | 62% | 0% | 2.0 |
+| C | 3-shot | 35.9 | 8.1 | 120 | 3.0 | 98% | 0% | 2.4 |
+
+**The choice, by the pre-registered rule:**
+- **All three variants failed the format filter.** In zero-shot mode, every wording wrote one paragraph less than 80% of the time (43–62%). Few-shot mostly fixed this (86–98%).
+- So, as the rule says, the filter was relaxed and the highest average SARI was taken: **variant A, average SARI 36.45** (C 35.85, B 35.06). The gap from A to the next variant is 0.60, just above the 0.5 tie-break margin, so no tie-break applied.
+- **Frozen in config.yaml: `llm.prompt_variant: A`.** The choice is recorded in `MyDrive/plainmed/step4/results/prompt_choice.json`.
+
+**What the table shows (for the report):**
+- **Wording matters less than the number of shots.** Across wordings, SARI moves by 2.4 points and FKGL by under 1 grade. Few-shot raises SARI in every wording (by 0.1 to 1.1), raises FKGL slightly, shortens outputs, and fixes the format. Zero-shot outputs read at grade 7.6–7.7, far below the human summaries' 13.3.
+- **Every LLM configuration scores lower SARI than copying the source (41.5 on the full validation set).** This matches the warning in the proposal: the references stay close to the source wording, so a much simpler rewrite loses SARI even if it's a good plain-language text. The report must make this point and lean on readability plus faithfulness.
+- **Few-shot keeps more digits** (3.0–4.4 per 100 words vs 1.8–3.4 zero-shot), matching the smoke-test observation that few-shot copies statistics from the examples' style.
+- **Speed:** 2.0–3.3 s per example in batches of 8. The full Step 4 took about 60 minutes of GPU time (24 min sensitivity, 16 + 19 min full runs).
+
+**Full validation runs:** 411/411 for both systems with variant A, saved to `MyDrive/plainmed/step4/outputs/`.
+
+**Run notes:**
+- Colab printed several "CUDACachingAllocator … OOM" *warnings* during generation. These are PyTorch freeing its cache and retrying, not failures: every example finished, and none of the outputs is missing. A likely cause is that the BERTScore check (cell 7) left roberta-large loaded on the GPU in the notebook's own process. The test notebook therefore starts in a fresh runtime and runs every model in a separate process.
+- Colab's torch was 2.14.1+cu130; the pinned file doesn't pin torch on Colab by design. pip's resolver also printed a warning about `cudf`/`pyarrow`, a Colab-preinstalled package that the project doesn't use.
