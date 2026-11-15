@@ -1,0 +1,118 @@
+CS 72/272 Project Proposal: Plain-Language Medical Summaries
+1. Project Title and Author
+PlainMed: Turning Medical Evidence into Plain Language, with Checks for What the Rewrite Gets Wrong
+Michael Dong (individual project)
+PlainMed rewrites the technical abstracts of medical systematic reviews into plain English, then flags the parts of its own output a patient should not trust without checking.
+2. Problem Statement and Motivation
+The most informative summaries of medical literature are written for physicians and not patients. Cochrane systematic reviews summarize the data from many clinical studies and are an important part of any treatment decision process. However, abstracts of these reviews are full of statistical terminology (risk ratio, confidence interval), trial terms (RCT, GRADE, heterogeneity) and long sentences. As shown in our preliminary analysis (Section 5), the average readability grade of abstracts is around college grade level, whereas the health-literacy guideline suggests that material intended for patients be written on much lower levels.
+Cochrane requests that the authors prepare an easy-to-understand version of an article manually; however, this process is both time-consuming and subjective. Instead, patients use search engines and chatbots which may be confident in their statements yet distort information intentionally or unintentionally.
+Intended users. Patients and caregivers studying diagnosis or a course of treatment; people with low health-literacy or reading English as a second language.
+Stakeholders. Practitioners who want to give patients easy-to-understand evidence; health librarians and patient educators; review authors who now manually compose the plain language version.
+Social benefit. Improved access to credible health information can contribute to informed decision-making. The danger of the opposite - a fluent but misleading explanation – is the reason why this project makes faithfulness checking a primary focus of the task.
+3. Selected NLP Task
+Primary Task. Paragraph-level text simplification, which is a type of conditional generation (sequence-to-sequence): input is a results section of a technical abstract, and the output is a simplified paragraph with identical main claims. A secondary classification task is used to help the primary task: classification of sentences from the output as supported or unsupported by the source.
+Novelty over previous work. Devaraj et al. (2021) are concerned with simplicity in the generated text, while Guo et al. (2024) are focused on incorporating background information using retrieval techniques. We, however, are interested in whether the text is reliable: we perform the evaluation of generalization to a different, independent source, evaluate the frequency of outputs which contain unsubstantiated claims, and create a checker system to point out to the user which sentences need verification.
+Research question. Does fine-tuning or prompting of the model allow for generating more readable Cochrane abstracts without incorporating claims not supported by the source, and would incorporating the faithfulness checker find the remaining errors?
+4. Dataset Description
+We will use two datasets: a core training and test set of patient-facing Cochrane summaries, and a second, independent test set of UK health research summaries drawn from CELLS. A third dataset, PLABA, is a stretch goal for higher-quality evaluation.
+Property | Cochrane (core) | CELLS, NIHR subset (second test set)
+Paper | Devaraj et al. (2021), NAACL | Guo et al. (2024), J. Biomedical Informatics
+Source | GitHub: Paragraph-level-Simplification-of-Medical-Texts | GitHub: pls_retrieval
+Pairs | 4,459: 3,568 train / 411 val / 480 test | 1,287 NIHR pairs, out of 62,886 in full CELLS
+Input / target | Abstract results section / author-written plain-language summary | Full abstract / plain-language summary from NIHR research reports
+Format | Plain text, one example per line, plus DOIs; raw JSON | Zipped .source / .target text files; metadata CSV with title and journal
+Labels | None: the reference summary is the target; faithfulness labels created by us (Section 8) | Same
+Language | English | English
+Access / license | Free download, CC BY 4.0 repository; text belongs to Cochrane, used for non-commercial research | Free download from GitHub; repository released under the MIT License
+Why can't we train the whole of CELLS? CELLS is 14 times bigger than Cochrane, but our exploration (see Section 5) demonstrates that 91% of it consists of research-science texts (PNAS significance statements and PLOS biology summaries), targeted at educated people, not patients. Moreover, it overlaps with the Cochrane test dataset quite significantly. Therefore, we will use it only in one controlled experiment (see Section 6).
+Stretch: PLABA (Attal et al., 2023). 750 PubMed abstracts adapted sentence by sentence into plain language by NIH experts, written specifically for the public. It is hosted on OSF; we will confirm the download before relying on it.
+Limitations. (1) References may not be simpler: differences in how diligent the authors are lead to only slightly simplified references for some targets. (2) Targets are not strict translations: targets may provide additional information or lack statistical measures, making our comparison of overlap metrics approximate. (3) Our dataset contains only English biomedical data.
+5. Evidence of Preliminary Dataset Exploration
+We cloned the Cochrane dataset repository, loaded all three splits, and calculated basic statistics for the training split. Our data is clean: there are no missing fields, no duplicate targets, and no duplicate sources. Our main finding is that the plain-language summaries are more concise and have significantly fewer numbers, but not significantly simpler.
+Training split (3,568 pairs) | Technical abstract | Plain-language summary
+Mean length (words) | 351 | 212
+Median length (words) | 320 | 198
+Min / max length (words) | 129 / 772 | 27 / 690
+Flesch-Kincaid grade, mean (approx.) | 15.5 | 14.2
+Digits per 100 words | 21.3 | 5.2
+Examples mentioning "CI" (confidence interval) | 2,716 | 53
+Additional Checks: 92.0% of targets are shorter than their sources; there are 4,345 samples in the raw file that have an unsectioned ("long") summary and 3,471 with a sectioned summary.
+What does this mean? The simplification in our case is mainly the reduction of statistical content and condensation, rather than just replacing difficult words. There is a very small grade level difference (around 1.3 grades), which confirms Limitation 1 above, so it is essential to measure the readability separately from the similarity to the reference. Grade levels were calculated using a heuristic syllable counter; therefore, we will verify it with a readability package.
+Representative pair (training example 4, truncated).
+Source: "We included 25 RCTs involving 4788 participants. Six of twelve trials showed that written information significantly improved knowledge about a medicine, compared with no written information. The inability to combine results means we cannot conclude..."
+Target: "The findings of this review were inconclusive for a number of reasons. First, because the included trials measured different outcomes in different ways, we were unable to combine their results..."
+Loading code (excerpt).
+base = 'data/data-1024/'for split in ['train', 'val', 'test']:    src = open(base + split + '.source').read().strip().split('\n')    print(split, len(src))# train 3568 / val 411 / test 480
+CELLS: what is in it, and does it overlap with Cochrane?
+We unzipped CELLS from GitHub (45,280 train / 11,295 val / 6,311 test pairs) and broke the training split down by journal using its metadata file. Most of it is not patient-facing:
+Source journal (CELLS train) | Pairs | Share | Audience
+PNAS (significance statements) | 18,352 | 40.5% | Scientists in other fields
+PLOS journals (biology, genetics, pathogens, etc.) | 22,865 | 50.5% | Educated general readers
+Cochrane | 3,137 | 6.9% | Patients
+NIHR health research reports | 926 | 2.0% | Patients and public
+In addition, we found 1,769 duplicate pairs in CELLS train. In particular, 227 of the 480 Cochrane test examples are also present in CELLS train dataset (abstract matching). This means that training on CELLS and testing on Cochrane without deduplication would leak test answers into training data and boost performance.
+NIHR is a subset of the dataset with inputs longer than those in Cochrane (551-word abstracts, 290-word summaries).
+6. Proposed NLP Method and Baseline
+We will compare four ways of producing the plain-language paragraph, then run every output through the same faithfulness checker.
+Inputs and outputs. Input: one abstract results paragraph (up to about 1,024 subword tokens). Output: a plain-language paragraph, its readability score, and a supported/unsupported flag per sentence.
+Preprocessing. Normalize whitespace and Unicode; split sentences with spaCy; tokenize with each model's own subword tokenizer (BPE for BART). We keep numbers in the input because deciding which statistics to keep is part of the task.
+Systems compared.
+Baseline 1 (no model): return the source unchanged. Any system must beat this on readability.
+Baseline 2 (extractive): select the 3 source sentences with the fewest digits and shortest length. This tests whether simply dropping statistic-heavy sentences is enough.
+Fine-tuned model: BART-base (Lewis et al., 2020) fine-tuned on the 3,568 training pairs. Devaraj et al. (2021) fine-tuned the larger BART-large-XSum and added an unlikelihood loss that discourages technical vocabulary; I use the smaller model to fit free GPU limits. We will start without that loss and add it if time allows.
+Prompted LLM: an instruction-tuned model given the abstract and a fixed prompt (zero-shot, then 3-shot with training examples).
+Data experiment: does more general science data make any difference? We will fine-tune BART-base two times: once using only Cochrane, and once using Cochrane as well as CELLS. Prior to the second fine-tuning, we will delete all the CELLS pairs with an abstract matching either validation or test example from Cochrane as well as 1,769 internal duplicates. Comparison of the results of two fine-tunings on both sets will show whether additional 40,000+ research science abstracts have a negative or positive impact on simplification.
+Faithfulness checker. Each output sentence gets scored for being entailed by the source text using a pretrained natural language inference (NLI) model in the fashion of SummaC (Laban et al., 2022). Sentences below a threshold become "check this." Mismatches between numbers (percentage in the output is not present in the source) are found using a simple rule.
+Tools. Python, PyTorch, Hugging Face Transformers and Datasets, spaCy, the evaluate library for metrics, and a free GPU (Dartmouth Discovery cluster or Colab) for fine-tuning BART-base.
+7. Interactive Demo Concept
+Demo is an application (Gradio/Streamlit running locally), wherein the user pastes in the abstract and gets the simplified version thereof, as well as the problems found with the latter.
+Who uses it. The demo tool is used by patients or caregivers/patient educators, who have found a Cochrane review and would like to comprehend it.
+What the user does. (1) Paste in the abstract or choose one of the abstracts in the test set. (2) Choose a system (fine-tuned BART, prompted LLM or baseline). (3) Click Simplify.
+What the system does. It outputs the simplified paragraph; highlights with a “check this” flag all the sentences marked as problematic by the faithfulness checker; when the user clicks on such a sentence, the source one is shown; and shows the grade of readability before and after the simplification.
+Relation to the NLP task. All elements seen on the screen are live outputs of the pipeline described in Section 6; the generator produces text, the NLI checker produces flags, and the readability metric produces a score. Users can even compare two systems with each other on the same abstract, and the evaluation is thereby made visible. Thus, if one model paraphrases “may improve knowledge” into “helps people remember their medicines,” the flagging will be done and connected to the original cautious statement.
+8. Evaluation Plan
+We will evaluate each system on three dimensions: simplicity, proximity to the expert-generated version, and faithfulness to the original. All results are reported on the held-out 480 examples test split and again on the 1,287 pairs NIHR set to check generalization to a different source. The validation split from Cochrane is used for tuning, e.g., the checker’s threshold.
+Question | Metric | Why
+Is it simpler? | Flesch-Kincaid grade level (Kincaid et al., 1975); output length; digits per 100 words | Directly measures readability, the goal of the task
+Close to the expert summary? | SARI (Xu et al., 2016); ROUGE-L; BERTScore (Zhang et al., 2020) | SARI is the standard simplification metric; ROUGE and BERTScore measure content overlap
+Faithful to the source? | Share of output sentences flagged by the NLI checker; manual faithfulness labels on a sample | Readability is worthless if the content is wrong
+Comparisons to baseline. Each model is benchmarked against the copy of source and extractive baselines (Section 6), while the two neural models are compared to one another.
+Checker validation. We will manually label 100 output sentences (sampled evenly from the two neural systems) as either supported or unsupported, and report the checker's precision and recall on those labels. As I am conducting this study alone, I will relabel 30 out of the 100 sentences a week later without seeing my first set of labels, and report self-agreement (Cohen's kappa).
+Qualitative analysis. Errors will be classified as follows: (1) hallucinated or altered numbers, (2) increased level of certainty ("helps" when the source says "may help" or "inconclusive"), (3) important findings that have been omitted, (4) jargon terms that were not explained.
+9. Ethical, Privacy, Fairness, and Safety Considerations
+Safety. A wrong simplification could change someone's health decision. The app will state that it is a reading aid, not medical advice, always show the original next to the rewrite, and flag doubtful sentences rather than hide them.
+Privacy. The dataset contains only published review text, with no patient records. The demo will not log what users paste. If we use a hosted LLM API, we will say so on screen so users do not paste personal health details.
+Fairness. Readability formulas are tuned to English and to average readers; a grade-8 score does not guarantee a text is clear to every group. We will name this limitation and not claim accessibility for languages or populations we did not test.
+Over-trust. A polished interface can make outputs feel authoritative. The "check this" flags and visible source are meant to keep users skeptical in the right places.
+Attribution. We will credit Cochrane and Devaraj et al. as the data source, and document every pretrained model, API, and AI tool used, per course policy.
+10. Timeline, Risks, and Fallback Plan
+This schedule includes an end-to-end system by week 3, allowing us to focus the remaining weeks on tuning and evaluating our system.
+Week 1: Finish preprocessing; run both baselines; write the metric script (FKGL, SARI, ROUGE-L, BERTScore).
+Week 2: Train the BART-base; run zero-shot and 3-shot LLM prompting on the validation data split.
+Week 3 (milestone: end-to-end prototype): Basic Gradio application for one model; NLI checker providing flags.
+Week 4: Manual labeling of ~100 sentences; tuning of the checker’s threshold; full test set evaluation of all systems.
+Week 5: Error analysis per category; improvements to the application (source linking, side-by-side); optional unlikelihood loss.
+Week 6: Write ACL-formatted report; prepare the demo and oral defense.
+Risk | Likelihood | Fallback
+Not enough GPU time to fine-tune BART | Medium | Use the smaller distilbart model or shorter inputs (512 tokens); or rely on the prompted LLM plus baselines
+LLM API cost or access limits | Medium | Use an open instruction-tuned model run locally or on Colab
+NLI checker is too noisy to be useful | Medium | Keep only the rule-based number check and report the NLI results as a negative finding
+Reference summaries are a weak target (Section 5) | High | Weight readability and faithfulness above SARI/ROUGE in conclusions
+Test-set leakage when adding CELLS (227 of 480 Cochrane test examples appear in CELLS train) | High if ignored | Deduplicate on abstract text before training; report results with and without CELLS separately
+PLABA download from OSF fails or takes too long | Low | Skip it; the NIHR set already provides an independent test
+Reduced-scope plan. If time runs short, we will drop the fine-tuned model and compare one prompted LLM against the two baselines, keeping the faithfulness checker and the demo, which are the parts that carry the project's contribution.
+11. Anticipated Responsibilities
+This is an individual project, so I am responsible for every component: data preparation and exploration, the baselines, BART fine-tuning and LLM prompting, the faithfulness checker, hand-labeling the evaluation sample, the Gradio demo, the error analysis, and the final report. Scope is set for one person: the reduced-scope plan in Section 10 drops the fine-tuned model first if time runs short.
+
+
+
+
+12. References and Links
+Attal, K., Ondov, B., and Demner-Fushman, D. 2023. A Dataset for Plain Language Adaptation of Biomedical Abstracts. Scientific Data, 10, 8. Data: OSF.
+Devaraj, A., Marshall, I., Wallace, B., and Li, J. J. 2021. Paragraph-level Simplification of Medical Texts. NAACL-HLT 2021, 4972–4984. Data and code: GitHub.
+Guo, Y., Qiu, W., Leroy, G., Wang, S., and Cohen, T. 2024. Retrieval Augmentation of Large Language Models for Lay Language Generation. Journal of Biomedical Informatics, 149, 104580. Introduces the CELLS dataset. Data: GitHub.
+Kincaid, J. P., Fishburne, R. P., Rogers, R. L., and Chissom, B. S. 1975. Derivation of New Readability Formulas (Automated Readability Index, Fog Count and Flesch Reading Ease Formula) for Navy Enlisted Personnel. Research Branch Report 8-75, Naval Technical Training Command.
+Laban, P., Schnabel, T., Bennett, P. N., and Hearst, M. A. 2022. SummaC: Re-Visiting NLI-based Models for Inconsistency Detection in Summarization. TACL, 10, 163–177.
+Lewis, M., Liu, Y., Goyal, N., Ghazvininejad, M., Mohamed, A., Levy, O., Stoyanov, V., and Zettlemoyer, L. 2020. BART: Denoising Sequence-to-Sequence Pre-training for Natural Language Generation, Translation, and Comprehension. ACL 2020, 7871–7880.
+Xu, W., Napoles, C., Pavlick, E., Chen, Q., and Callison-Burch, C. 2016. Optimizing Statistical Machine Translation for Text Simplification. TACL, 4, 401–415.
+Zhang, T., Kishore, V., Wu, F., Weinberger, K. Q., and Artzi, Y. 2020. BERTScore: Evaluating Text Generation with BERT. ICLR 2020.
